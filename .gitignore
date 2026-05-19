@@ -1,0 +1,23 @@
+# Build artifacts
+node_modules
+.next
+out
+build
+dist
+
+# Env / secrets (NEVER commit)
+.env*
+!.env.example
+
+# Customer data — contains hashed passwords, sessions, tokens, CCTV creds, etc.
+data/
+!data/.gitkeep
+
+# Customer-uploaded photos (PII)
+public/uploads/
+
+# OS / IDE
+.DS_Store
+*.log
+.vercel
+next-env.d.ts
