@@ -36,8 +36,10 @@ export async function POST(req: Request) {
   const c = await cookies();
   const cookieExpiry = remember === false ? undefined : expiresAt;
   c.set(SESSION_COOKIE, token, cookieOptions(cookieExpiry));
-  return NextResponse.json({
-    ok: true,
-    redirect: user.isAdmin ? "/admin" : "/portal/sites",
-  });
+  const redirect = user.isAdmin
+    ? "/admin"
+    : user.isTech
+      ? "/tech/sites"
+      : "/portal/sites";
+  return NextResponse.json({ ok: true, redirect });
 }

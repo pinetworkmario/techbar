@@ -66,6 +66,12 @@ export async function GET(req: Request) {
   const { token, expiresAt } = await createSession(user.id);
   c.set(SESSION_COOKIE, token, cookieOptions(expiresAt));
 
-  const dest = next || (user.isAdmin ? "/admin" : "/portal/sites");
+  const dest =
+    next ||
+    (user.isAdmin
+      ? "/admin"
+      : user.isTech
+        ? "/tech/sites"
+        : "/portal/sites");
   return NextResponse.redirect(new URL(dest, publicOrigin(req)));
 }

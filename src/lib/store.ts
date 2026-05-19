@@ -40,6 +40,8 @@ export interface User {
   name: string;
   role: string;
   isAdmin: boolean;
+  /** Internal PI Network tech support staff — gets /tech/* access. Admins also implicitly get it. */
+  isTech?: boolean;
   passwordHash: string | null;
   passwordSalt: string | null;
   disabled: boolean;
