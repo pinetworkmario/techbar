@@ -42,6 +42,8 @@ export interface User {
   isAdmin: boolean;
   /** Internal PI Network tech support staff — gets /tech/* access. Admins also implicitly get it. */
   isTech?: boolean;
+  /** "admin" = top-level customer contact (manages sub-contacts); "user" = sub-contact under a customer admin. Irrelevant for internal users. */
+  customerRole?: "admin" | "user";
   passwordHash: string | null;
   passwordSalt: string | null;
   disabled: boolean;

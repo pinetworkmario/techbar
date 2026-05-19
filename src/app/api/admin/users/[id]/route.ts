@@ -22,7 +22,34 @@ export async function PATCH(
   if (!u) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (typeof body.name === "string") u.name = body.name.trim();
   if (typeof body.role === "string") u.role = body.role.trim();
-  if (typeof body.isAdmin === "boolean") {
+  if (typeof body.effectiveRole === "string") {
+    const valid = ["admin", "tech", "customer_admin", "customer_user"];
+    if (!valid.includes(body.effectiveRole)) {
+      return NextResponse.json(
+        { error: "Invalid effectiveRole" },
+        { status: 400 },
+      );
+    }
+    const er = body.effectiveRole as
+      | "admin"
+      | "tech"
+      | "customer_admin"
+      | "customer_user";
+    if (u.id === me.id && er !== "admin") {
+      return NextResponse.json(
+        { error: "Cannot remove admin from your own account" },
+        { status: 400 },
+      );
+    }
+    u.isAdmin = er === "admin";
+    u.isTech = er === "tech" || undefined;
+    u.customerRole =
+      er === "customer_admin"
+        ? "admin"
+        : er === "customer_user"
+          ? "user"
+          : undefined;
+  } else if (typeof body.isAdmin === "boolean") {
     if (u.id === me.id && !body.isAdmin) {
       return NextResponse.json(
         { error: "Cannot remove admin from your own account" },

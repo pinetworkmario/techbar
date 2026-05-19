@@ -35,18 +35,34 @@ const MODULES: { key: ServiceCategory; label: string }[] = [
   { key: "traffic_analysis", label: "Traffic Analysis" },
 ];
 
+type EffectiveRole = "admin" | "tech" | "customer_admin" | "customer_user";
+
 interface UserRow {
   id: string;
   email: string;
   name: string;
   role: string;
   isAdmin: boolean;
+  isTech?: boolean;
+  customerRole?: "admin" | "user" | null;
+  effectiveRole?: EffectiveRole;
   disabled: boolean;
   hasPassword: boolean;
   hasPin: boolean;
   permissions: Record<string, ServiceCategory[]>;
   createdAt: string;
   updatedAt: string;
+}
+
+const ROLE_OPTIONS: { value: EffectiveRole; label: string; hint: string }[] = [
+  { value: "admin", label: "PI Network Admin", hint: "Full edit access to users, sites, billing, everything" },
+  { value: "tech", label: "PI Network Tech", hint: "/tech shell — all sites read + vendor portals; no user / billing edits" },
+  { value: "customer_admin", label: "Customer Admin", hint: "Top-level customer contact; manages their own sub-contacts" },
+  { value: "customer_user", label: "Customer User", hint: "Sub-contact under a customer admin; site-scoped" },
+];
+
+function roleLabelOf(er?: EffectiveRole | null) {
+  return ROLE_OPTIONS.find((o) => o.value === er)?.label ?? "Customer Admin";
 }
 
 export function AdminUsersClient({
@@ -230,10 +246,11 @@ function CreateUserForm({
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState("Customer Operator");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [effectiveRole, setEffectiveRole] = useState<EffectiveRole>("customer_admin");
+  const [role, setRole] = useState("");
   const [perms, setPerms] = useState<Record<string, ServiceCategory[]>>({});
   const [busy, setBusy] = useState(false);
+  const isInternal = effectiveRole === "admin" || effectiveRole === "tech";
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -245,9 +262,9 @@ function CreateUserForm({
         body: JSON.stringify({
           email,
           name,
-          role,
-          isAdmin,
-          permissions: isAdmin ? {} : perms,
+          role: role || roleLabelOf(effectiveRole),
+          effectiveRole,
+          permissions: isInternal ? {} : perms,
         }),
       });
       const j = await res.json();
@@ -288,30 +305,34 @@ function CreateUserForm({
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
           />
         </Field>
-        <Field label="Role (display)">
+        <Field label="Role (display, optional)">
           <input
             type="text"
             value={role}
+            placeholder={roleLabelOf(effectiveRole)}
             onChange={(e) => setRole(e.target.value)}
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
           />
         </Field>
-        <Field label="Admin?">
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={isAdmin}
-              onChange={(e) => setIsAdmin(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-            />
-            <span>
-              Grant admin access (can manage all users, all sites, all devices)
-            </span>
-          </label>
+        <Field label="Access level">
+          <select
+            value={effectiveRole}
+            onChange={(e) => setEffectiveRole(e.target.value as EffectiveRole)}
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+          >
+            {ROLE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            {ROLE_OPTIONS.find((o) => o.value === effectiveRole)?.hint}
+          </p>
         </Field>
       </div>
 
-      {!isAdmin ? (
+      {!isInternal ? (
         <PermissionsEditor
           sites={sites}
           groups={groups}
@@ -458,7 +479,18 @@ function UserRowView({
   const [perms, setPerms] = useState(user.permissions);
   const [name, setName] = useState(user.name);
   const [role, setRole] = useState(user.role);
-  const [isAdmin, setIsAdmin] = useState(user.isAdmin);
+  const [effectiveRole, setEffectiveRole] = useState<EffectiveRole>(
+    user.effectiveRole ??
+      (user.isAdmin
+        ? "admin"
+        : user.isTech
+          ? "tech"
+          : user.customerRole === "user"
+            ? "customer_user"
+            : "customer_admin"),
+  );
+  const isAdmin = effectiveRole === "admin";
+  const isInternal = effectiveRole === "admin" || effectiveRole === "tech";
   const [savingPerms, setSavingPerms] = useState(false);
 
   const sitesCount = useMemo(
@@ -500,7 +532,7 @@ function UserRowView({
 
   async function savePermissions() {
     setSavingPerms(true);
-    const ok = await patch({ permissions: isAdmin ? {} : perms });
+    const ok = await patch({ permissions: isInternal ? {} : perms });
     setSavingPerms(false);
     if (ok) onChanged();
   }
@@ -529,8 +561,18 @@ function UserRowView({
             <span className="inline-flex items-center gap-1 rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
               <ShieldCheck className="h-3 w-3" /> Admin
             </span>
+          ) : user.isTech ? (
+            <span className="inline-flex items-center gap-1 rounded bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+              Tech
+            </span>
+          ) : user.customerRole === "user" ? (
+            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+              Customer user
+            </span>
           ) : (
-            <span className="text-xs">{user.role}</span>
+            <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+              Customer admin
+            </span>
           )}
         </td>
         <td className="px-4 py-2">
@@ -549,7 +591,9 @@ function UserRowView({
           )}
         </td>
         <td className="px-4 py-2 text-xs text-slate-600">
-          {user.isAdmin ? "All sites" : `${sitesCount} site(s)`}
+          {user.isAdmin || user.isTech
+            ? "All sites"
+            : `${sitesCount} site(s)`}
         </td>
         <td className="px-4 py-2">
           <div className="flex justify-end gap-1">
@@ -600,16 +644,20 @@ function UserRowView({
                     className="w-full rounded-md border border-slate-200 px-2 py-1 text-sm"
                   />
                 </Field>
-                <Field label="Admin">
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={isAdmin}
-                      onChange={(e) => setIsAdmin(e.target.checked)}
-                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                    />
-                    Grant admin
-                  </label>
+                <Field label="Access level">
+                  <select
+                    value={effectiveRole}
+                    onChange={(e) =>
+                      setEffectiveRole(e.target.value as EffectiveRole)
+                    }
+                    className="w-full rounded-md border border-slate-200 px-2 py-1 text-sm"
+                  >
+                    {ROLE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
               </div>
               <PinEditor userId={user.id} hasPin={user.hasPin} />
@@ -617,7 +665,7 @@ function UserRowView({
                 <button
                   type="button"
                   onClick={async () => {
-                    const ok = await patch({ name, role, isAdmin });
+                    const ok = await patch({ name, role, effectiveRole });
                     if (ok) onChanged();
                   }}
                   className="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-900"
@@ -625,7 +673,7 @@ function UserRowView({
                   Save profile
                 </button>
               </div>
-              {!isAdmin ? (
+              {!isInternal ? (
                 <>
                   <PermissionsEditor
           sites={sites}

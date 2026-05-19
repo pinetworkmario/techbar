@@ -90,6 +90,33 @@ export function inviteExpiry(): string {
   return new Date(Date.now() + INVITE_TTL_MS).toISOString();
 }
 
+// ----- Role helpers -----
+// Source of truth for "what kind of user is this": the combination of
+// isAdmin / isTech / customerRole / parentUserId. These helpers centralise
+// the logic so route handlers and pages can use clean booleans.
+
+export function isInternal(user: User): boolean {
+  return !!user.isAdmin || !!user.isTech;
+}
+
+export function isCustomerAdmin(user: User): boolean {
+  return !isInternal(user) && (user.customerRole === "admin" || (!user.customerRole && user.parentUserId === null));
+}
+
+export function isCustomerUser(user: User): boolean {
+  return !isInternal(user) && (user.customerRole === "user" || (!user.customerRole && user.parentUserId !== null));
+}
+
+export type EffectiveRole = "admin" | "tech" | "customer_admin" | "customer_user";
+
+/** Returns a single role string useful for UI labels and switch logic. */
+export function effectiveRole(user: User): EffectiveRole {
+  if (user.isAdmin) return "admin";
+  if (user.isTech) return "tech";
+  if (isCustomerAdmin(user)) return "customer_admin";
+  return "customer_user";
+}
+
 export function canAccessSite(user: User, siteId: string): boolean {
   if (user.isAdmin) return true;
   return Object.prototype.hasOwnProperty.call(user.permissions, siteId);
