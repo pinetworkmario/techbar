@@ -68,6 +68,7 @@ import {
   type StaffShift,
 } from "@/lib/traffic";
 import type { DiscoveredDevice } from "@/lib/discovery";
+import { NbnOutageCard } from "@/components/portal/NbnOutageCard";
 
 interface DeviceOverride {
   assetNumber?: string;
@@ -852,6 +853,8 @@ function NetworkTab({
   return (
     <div className="space-y-5">
       <AccessNetworkCard site={site} />
+
+      <NbnOutageCard address={site.address} autoLoad={false} />
 
       {net ? (
         <Card>

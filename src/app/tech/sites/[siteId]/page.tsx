@@ -27,6 +27,7 @@ import {
   type VendorLink,
 } from "@/lib/vendor-portals";
 import type { Site, SiteHealth } from "@/lib/types";
+import { NbnOutageCard } from "@/components/portal/NbnOutageCard";
 
 const HEALTH_TONE: Record<SiteHealth, string> = {
   Healthy: "bg-emerald-500 text-white",
@@ -267,6 +268,8 @@ export default async function TechSitePage({
           </Link>
         </div>
       </div>
+
+      <NbnOutageCard address={site.address} autoLoad={false} variant="tech" />
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <ModuleCard
