@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { canAccessSite, getCurrentUser } from "@/lib/auth";
 import { getSiteById } from "@/lib/data";
-import { createHandoff } from "@/lib/chat-handoffs";
+import { createHandoff, updateHandoff } from "@/lib/chat-handoffs";
+import { notifyHandoffCreated } from "@/lib/slack-bot";
 
 interface InboundMsg {
   role: "user" | "assistant";
@@ -55,6 +56,22 @@ export async function POST(
         : undefined,
     transcript,
   });
+
+  // Notify PI team via Slack — fire-and-forget; persist returned ts for threading.
+  notifyHandoffCreated({
+    id: handoff.id,
+    siteName: handoff.siteName,
+    userEmail: handoff.userEmail,
+    requestedAt: handoff.requestedAt,
+    reason: handoff.reason,
+    transcript: handoff.transcript,
+  })
+    .then((ts) => {
+      if (ts) {
+        void updateHandoff(handoff.id, { slackThreadTs: ts });
+      }
+    })
+    .catch((e) => console.warn("slack handoff notify failed", e));
 
   return NextResponse.json({ ok: true, handoff });
 }

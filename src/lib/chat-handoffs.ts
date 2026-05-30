@@ -19,6 +19,8 @@ export interface ChatHandoff {
   claimedBy?: string;
   claimedAt?: string;
   resolvedAt?: string;
+  /** Slack message ts of the original notification; used to thread updates. */
+  slackThreadTs?: string;
 }
 
 let store: ChatHandoff[] = [];
@@ -50,6 +52,10 @@ export function listHandoffs(filter?: ChatHandoff["status"]): ChatHandoff[] {
 
 export function pendingCount(): number {
   return store.filter((h) => h.status === "pending").length;
+}
+
+export function findHandoff(id: string): ChatHandoff | null {
+  return store.find((h) => h.id === id) ?? null;
 }
 
 export async function updateHandoff(
