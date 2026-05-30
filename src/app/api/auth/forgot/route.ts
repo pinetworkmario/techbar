@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { generateInviteToken, inviteExpiry } from "@/lib/auth";
+import { sendMail } from "@/lib/mail-graph";
 import {
   findUserByEmail,
   listInvites,
@@ -43,6 +44,25 @@ export async function POST(req: Request) {
           undefined,
       });
       await saveResetRequests(filtered);
+
+      const baseUrl =
+        process.env.PORTAL_PUBLIC_URL || "https://techbar.pinetwork.com.au";
+      const resetLink = `${baseUrl}/set-password?token=${token}`;
+      try {
+        await sendMail({
+          to: user.email,
+          subject: "PI Network — password reset link",
+          body:
+            `Hi ${user.name},\n\n` +
+            `We received a request to reset the password on your PI Network portal account.\n\n` +
+            `Set a new password using the link below:\n` +
+            `${resetLink}\n\n` +
+            `This link expires in 7 days. If you did not request this, you can ignore this email.\n\n` +
+            `— PI Network`,
+        });
+      } catch {
+        // swallow — admin still sees the request and can copy the link manually
+      }
     }
   }
 

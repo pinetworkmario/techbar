@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { projects, sites } from "@/lib/data";
 import { ProjectsClient } from "./ProjectsClient";
 
 export default async function ProjectsPage() {
   const me = await getCurrentUser();
-  if (!me?.isAdmin) redirect("/login?next=/admin/projects");
+  if (!me || !isInternal(me)) redirect("/login?next=/admin/projects");
   const sorted = projects
     .slice()
     .sort((a, b) =>

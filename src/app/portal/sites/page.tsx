@@ -3,7 +3,7 @@ import { PlusCircle } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LinkButton } from "@/components/ui/Button";
 import { devices, sites } from "@/lib/data";
-import { allowedSiteIds, getCurrentUser } from "@/lib/auth";
+import { allowedSiteIds, getCurrentUser, isCustomerUser } from "@/lib/auth";
 import { getSupportPack } from "@/lib/support-packs";
 import { SitesListClient, type SiteCardData } from "./SitesListClient";
 import { AddSiteButton } from "./AddSiteButton";
@@ -51,7 +51,7 @@ export default async function SitesPage() {
         }
         actions={
           <div className="flex items-center gap-2">
-            {me.parentUserId ? null : <AddSiteButton />}
+            {isCustomerUser(me) ? null : <AddSiteButton />}
             <LinkButton href="/portal/tickets?create=1" variant="secondary">
               <PlusCircle className="h-4 w-4" /> Create Ticket
             </LinkButton>

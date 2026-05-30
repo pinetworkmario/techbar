@@ -3,7 +3,7 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import { randomBytes } from "crypto";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import { discoverDevices } from "@/lib/pcap-discover";
 
@@ -18,7 +18,7 @@ export async function POST(
   ctx: { params: Promise<{ siteId: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { siteId } = await ctx.params;

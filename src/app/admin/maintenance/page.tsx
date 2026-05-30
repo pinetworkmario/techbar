@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { devices, maintenanceItems, sites } from "@/lib/data";
 import { MaintenanceClient } from "./MaintenanceClient";
 
 export default async function MaintenancePage() {
   const me = await getCurrentUser();
-  if (!me?.isAdmin) redirect("/login?next=/admin/maintenance");
+  if (!me || !isInternal(me)) redirect("/login?next=/admin/maintenance");
   const sorted = maintenanceItems
     .slice()
     .sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));

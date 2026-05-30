@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { allowedSiteIds, getCurrentUser } from "@/lib/auth";
+import { allowedSiteIds, getCurrentUser, isCustomerUser } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import { persistSites } from "@/lib/server-data";
 import { listUsers, saveUsers, type ServiceCategoryKey } from "@/lib/store";
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   const me = await getCurrentUser();
   if (!me)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (me.parentUserId)
+  if (isCustomerUser(me))
     return NextResponse.json(
       {
         error:

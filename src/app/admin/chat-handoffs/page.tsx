@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { listHandoffs } from "@/lib/chat-handoffs";
 import { ChatHandoffsClient } from "./ChatHandoffsClient";
 
 export default async function ChatHandoffsPage() {
   const me = await getCurrentUser();
-  if (!me?.isAdmin) redirect("/login?next=/admin/chat-handoffs");
+  if (!me || !isInternal(me)) redirect("/login?next=/admin/chat-handoffs");
   const handoffs = listHandoffs();
   return (
     <div className="space-y-4">

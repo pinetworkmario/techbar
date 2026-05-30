@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { sites, tickets } from "@/lib/data";
 import { TicketsClient } from "./TicketsClient";
 
 export default async function TicketsPage() {
   const me = await getCurrentUser();
-  if (!me?.isAdmin) redirect("/login?next=/admin/tickets");
+  if (!me || !isInternal(me)) redirect("/login?next=/admin/tickets");
   const sorted = tickets
     .slice()
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { updateHandoff } from "@/lib/chat-handoffs";
 
 export async function PATCH(
@@ -7,7 +7,7 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as {

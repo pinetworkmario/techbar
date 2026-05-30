@@ -50,6 +50,7 @@ interface UserRow {
   hasPassword: boolean;
   hasPin: boolean;
   permissions: Record<string, ServiceCategory[]>;
+  parentUserId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -169,6 +170,7 @@ export function AdminUsersClient({
         <CreateUserForm
           sites={sites}
           groups={groups}
+          users={users}
           onCancel={() => setCreating(false)}
           onCreated={(token, email) => {
             setCreating(false);
@@ -212,6 +214,7 @@ export function AdminUsersClient({
                   user={u}
                   sites={sites}
                   groups={groups}
+                  allUsers={users}
                   expanded={expanded === u.id}
                   onToggle={() =>
                     setExpanded((prev) => (prev === u.id ? null : u.id))
@@ -234,12 +237,14 @@ export function AdminUsersClient({
 function CreateUserForm({
   sites,
   groups,
+  users,
   onCancel,
   onCreated,
   onError,
 }: {
   sites: SiteOption[];
   groups: SiteGroupOption[];
+  users: UserRow[];
   onCancel: () => void;
   onCreated: (token: string, email: string) => void;
   onError: (msg: string) => void;
@@ -249,11 +254,20 @@ function CreateUserForm({
   const [effectiveRole, setEffectiveRole] = useState<EffectiveRole>("customer_admin");
   const [role, setRole] = useState("");
   const [perms, setPerms] = useState<Record<string, ServiceCategory[]>>({});
+  const [parentUserId, setParentUserId] = useState("");
   const [busy, setBusy] = useState(false);
   const isInternal = effectiveRole === "admin" || effectiveRole === "tech";
+  const customerAdmins = useMemo(
+    () => users.filter((u) => u.effectiveRole === "customer_admin"),
+    [users],
+  );
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (effectiveRole === "customer_user" && !parentUserId) {
+      onError("Pick the parent customer admin for this customer user.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/admin/users", {
@@ -265,6 +279,8 @@ function CreateUserForm({
           role: role || roleLabelOf(effectiveRole),
           effectiveRole,
           permissions: isInternal ? {} : perms,
+          parentUserId:
+            effectiveRole === "customer_user" ? parentUserId : undefined,
         }),
       });
       const j = await res.json();
@@ -330,6 +346,27 @@ function CreateUserForm({
             {ROLE_OPTIONS.find((o) => o.value === effectiveRole)?.hint}
           </p>
         </Field>
+        {effectiveRole === "customer_user" ? (
+          <Field label="Parent customer admin">
+            <select
+              required
+              value={parentUserId}
+              onChange={(e) => setParentUserId(e.target.value)}
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+            >
+              <option value="">Choose customer admin…</option>
+              {customerAdmins.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.email})
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Customer users inherit a subset of their parent admin's site
+              access.
+            </p>
+          </Field>
+        ) : null}
       </div>
 
       {!isInternal ? (
@@ -461,6 +498,7 @@ function UserRowView({
   user,
   sites,
   groups,
+  allUsers,
   expanded,
   onToggle,
   onChanged,
@@ -470,6 +508,7 @@ function UserRowView({
   user: UserRow;
   sites: SiteOption[];
   groups: SiteGroupOption[];
+  allUsers: UserRow[];
   expanded: boolean;
   onToggle: () => void;
   onChanged: () => void;
@@ -489,9 +528,19 @@ function UserRowView({
             ? "customer_user"
             : "customer_admin"),
   );
+  const [parentUserId, setParentUserId] = useState<string>(
+    user.parentUserId ?? "",
+  );
   const isAdmin = effectiveRole === "admin";
   const isInternal = effectiveRole === "admin" || effectiveRole === "tech";
   const [savingPerms, setSavingPerms] = useState(false);
+  const customerAdmins = useMemo(
+    () =>
+      allUsers.filter(
+        (u) => u.effectiveRole === "customer_admin" && u.id !== user.id,
+      ),
+    [allUsers, user.id],
+  );
 
   const sitesCount = useMemo(
     () => Object.keys(user.permissions).length,
@@ -659,13 +708,43 @@ function UserRowView({
                     ))}
                   </select>
                 </Field>
+                {effectiveRole === "customer_user" ? (
+                  <Field label="Parent customer admin">
+                    <select
+                      value={parentUserId}
+                      onChange={(e) => setParentUserId(e.target.value)}
+                      className="w-full rounded-md border border-slate-200 px-2 py-1 text-sm"
+                    >
+                      <option value="">Choose customer admin…</option>
+                      {customerAdmins.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : null}
               </div>
               <PinEditor userId={user.id} hasPin={user.hasPin} />
               <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={async () => {
-                    const ok = await patch({ name, role, effectiveRole });
+                    if (effectiveRole === "customer_user" && !parentUserId) {
+                      onError(
+                        "Pick the parent customer admin for this customer user.",
+                      );
+                      return;
+                    }
+                    const payload: Record<string, unknown> = {
+                      name,
+                      role,
+                      effectiveRole,
+                    };
+                    if (effectiveRole === "customer_user") {
+                      payload.parentUserId = parentUserId;
+                    }
+                    const ok = await patch(payload);
                     if (ok) onChanged();
                   }}
                   className="rounded-md bg-slate-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-900"

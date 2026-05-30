@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { projects, sites } from "@/lib/data";
 import { persistProjects } from "@/lib/server-data";
 import { recordActivity } from "@/lib/activity";
@@ -27,7 +27,7 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const p = projects.find((x) => x.id === id);
@@ -69,7 +69,7 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const i = projects.findIndex((x) => x.id === id);

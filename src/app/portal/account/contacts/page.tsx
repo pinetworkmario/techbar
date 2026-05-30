@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { allowedModulesForSite, getCurrentUser } from "@/lib/auth";
+import { allowedModulesForSite, getCurrentUser, isCustomerUser } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import type { ServiceCategoryKey } from "@/lib/store";
 import { ContactsClient } from "./ContactsClient";
@@ -9,7 +9,7 @@ import { ContactsClient } from "./ContactsClient";
 export default async function ContactsPage() {
   const me = await getCurrentUser();
   if (!me) redirect("/login?next=/portal/account/contacts");
-  if (me.parentUserId) redirect("/portal/account");
+  if (isCustomerUser(me)) redirect("/portal/account");
 
   // Build the matrix of allowed sites/modules for this user — sub-contacts can
   // only get a subset.

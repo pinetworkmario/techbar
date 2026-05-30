@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { devices } from "@/lib/data";
 import { persistDevices } from "@/lib/server-data";
 
@@ -18,7 +18,7 @@ export async function POST(
   ctx: { params: Promise<{ deviceId: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { deviceId } = await ctx.params;
   const safeId = deviceId.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -69,7 +69,7 @@ export async function DELETE(
   ctx: { params: Promise<{ deviceId: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { deviceId } = await ctx.params;
   const device = devices.find((d) => d.id === deviceId);

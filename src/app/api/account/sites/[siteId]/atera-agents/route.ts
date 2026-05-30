@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canAccessSite, getCurrentUser } from "@/lib/auth";
+import { canAccessModule, canAccessSite, getCurrentUser } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import { findCustomerByName, listAgentsForCustomer } from "@/lib/atera";
 
@@ -23,6 +23,11 @@ export async function GET(
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   if (!canAccessSite(me, site.id))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!canAccessModule(me, site.id, "endpoint"))
+    return NextResponse.json(
+      { error: "Module not available for your account" },
+      { status: 403 },
+    );
 
   const customerName = site.endpointModule?.ateraCustomerName?.trim();
   if (!customerName) {

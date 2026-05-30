@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { devices, maintenanceItems, sites } from "@/lib/data";
 import { persistMaintenance } from "@/lib/server-data";
 import { recordActivity } from "@/lib/activity";
@@ -27,7 +27,7 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const m = maintenanceItems.find((x) => x.id === id);
@@ -73,7 +73,7 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const i = maintenanceItems.findIndex((x) => x.id === id);

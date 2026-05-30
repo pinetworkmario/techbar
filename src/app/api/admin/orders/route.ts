@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { orders } from "@/lib/store-catalog";
 
 export async function GET() {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const sorted = [...orders].sort((a, b) =>
     a.createdAt > b.createdAt ? -1 : 1,

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import {
   AlertOctagon,
   CalendarRange,
@@ -18,7 +19,8 @@ import {
   MaintenancePriorityBadge,
   MaintenanceStatusBadge,
 } from "@/components/ui/StatusBadges";
-import { devices, getSiteName, maintenanceItems } from "@/lib/data";
+import { devices, getSiteName, maintenanceItems, sites } from "@/lib/data";
+import { allowedSiteIds, getCurrentUser } from "@/lib/auth";
 import type { LifecycleStage } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
@@ -33,43 +35,64 @@ const STAGES: LifecycleStage[] = [
   "Retired",
 ];
 
-export default function LifecyclePage() {
+export default async function LifecyclePage() {
+  const me = await getCurrentUser();
+  if (!me) redirect("/login?next=/portal/lifecycle");
+  const allowedIds = new Set(allowedSiteIds(me, sites.map((s) => s.id)));
+
   const today = new Date("2026-05-08");
 
-  const inWarranty = devices.filter(
+  const visibleDevices = devices.filter((d) => allowedIds.has(d.siteId));
+  const visibleMaintenanceItems = maintenanceItems.filter((m) =>
+    allowedIds.has(m.siteId),
+  );
+
+  const inWarranty = visibleDevices.filter(
     (d) => new Date(d.warrantyExpiry) >= today,
   );
-  const dueForReplacement = devices.filter(
+  const dueForReplacement = visibleDevices.filter(
     (d) => d.lifecycleStage === "Replacement Recommended",
   );
-  const dueForMaintenance = maintenanceItems.filter(
+  const dueForMaintenance = visibleMaintenanceItems.filter(
     (m) => m.status === "Due" || m.status === "Overdue",
   );
-  const upcomingRenewals = devices.filter((d) => {
+  const upcomingRenewals = visibleDevices.filter((d) => {
     const days =
       (new Date(d.warrantyExpiry).getTime() - today.getTime()) /
       (1000 * 60 * 60 * 24);
     return days > 0 && days < 120;
   });
 
-  const recommendations: { text: string; tone: "warning" | "danger" | "brand" }[] = [
-    {
-      text: "Box Hill Store does not have 4G backup",
+  const outOfWarrantyCount = visibleDevices.length - inWarranty.length;
+  const overdueMaintenanceCount = visibleMaintenanceItems.filter(
+    (m) => m.status === "Overdue",
+  ).length;
+
+  const recommendations: { text: string; tone: "warning" | "danger" | "brand" }[] = [];
+  if (outOfWarrantyCount > 0) {
+    recommendations.push({
+      text: `${outOfWarrantyCount} device${outOfWarrantyCount === 1 ? " is" : "s are"} out of warranty`,
       tone: "warning",
-    },
-    {
-      text: "Sydney Store CCTV system is not under maintenance plan",
+    });
+  }
+  if (overdueMaintenanceCount > 0) {
+    recommendations.push({
+      text: `${overdueMaintenanceCount} maintenance item${overdueMaintenanceCount === 1 ? " is" : "s are"} overdue`,
       tone: "danger",
-    },
-    {
-      text: `${upcomingRenewals.length} devices are approaching warranty expiry`,
+    });
+  }
+  if (upcomingRenewals.length > 0) {
+    recommendations.push({
+      text: `${upcomingRenewals.length} device${upcomingRenewals.length === 1 ? " is" : "s are"} approaching warranty expiry`,
       tone: "warning",
-    },
-    {
-      text: "4 POS devices are not covered by Endpoint Support",
-      tone: "brand",
-    },
-  ];
+    });
+  }
+  if (dueForReplacement.length > 0) {
+    recommendations.push({
+      text: `${dueForReplacement.length} device${dueForReplacement.length === 1 ? " is" : "s are"} recommended for replacement`,
+      tone: "danger",
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -94,7 +117,7 @@ export default function LifecyclePage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         <StatTile
           label="Devices under management"
-          value={devices.length}
+          value={visibleDevices.length}
           icon={<ShieldCheck className="h-5 w-5" />}
           tone="brand"
         />
@@ -103,14 +126,14 @@ export default function LifecyclePage() {
           value={inWarranty.length}
           icon={<ShieldCheck className="h-5 w-5" />}
           tone="success"
-          hint={`${devices.length - inWarranty.length} out of warranty`}
+          hint={`${outOfWarrantyCount} out of warranty`}
         />
         <StatTile
           label="Maintenance due"
           value={dueForMaintenance.length}
           icon={<Wrench className="h-5 w-5" />}
           tone="warning"
-          hint={`${maintenanceItems.filter((m) => m.status === "Overdue").length} overdue`}
+          hint={`${overdueMaintenanceCount} overdue`}
         />
         <StatTile
           label="Replacement recommended"
@@ -130,7 +153,7 @@ export default function LifecyclePage() {
         <CardBody>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
             {STAGES.map((stage) => {
-              const count = devices.filter((d) => d.lifecycleStage === stage)
+              const count = visibleDevices.filter((d) => d.lifecycleStage === stage)
                 .length;
               return (
                 <div
@@ -182,7 +205,7 @@ export default function LifecyclePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {maintenanceItems.map((m) => (
+              {visibleMaintenanceItems.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3 font-medium text-slate-900">
                     {getSiteName(m.siteId)}
@@ -215,30 +238,36 @@ export default function LifecyclePage() {
             subtitle="Generated from coverage gaps, lifecycle stage and warranty data"
           />
           <CardBody>
-            <ul className="space-y-2">
-              {recommendations.map((r, i) => (
-                <li
-                  key={i}
-                  className={
-                    "flex items-start gap-3 rounded-lg border p-3 text-sm " +
-                    (r.tone === "danger"
-                      ? "border-rose-100 bg-rose-50 text-rose-900"
-                      : r.tone === "warning"
-                        ? "border-amber-100 bg-amber-50 text-amber-900"
-                        : "border-brand-100 bg-brand-50 text-brand-900")
-                  }
-                >
-                  {r.tone === "danger" ? (
-                    <ShieldAlert className="mt-0.5 h-4 w-4 text-rose-600" />
-                  ) : r.tone === "warning" ? (
-                    <AlertOctagon className="mt-0.5 h-4 w-4 text-amber-600" />
-                  ) : (
-                    <ShieldCheck className="mt-0.5 h-4 w-4 text-brand-600" />
-                  )}
-                  <span>{r.text}</span>
-                </li>
-              ))}
-            </ul>
+            {recommendations.length === 0 ? (
+              <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">
+                Nothing to flag at the moment
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {recommendations.map((r, i) => (
+                  <li
+                    key={i}
+                    className={
+                      "flex items-start gap-3 rounded-lg border p-3 text-sm " +
+                      (r.tone === "danger"
+                        ? "border-rose-100 bg-rose-50 text-rose-900"
+                        : r.tone === "warning"
+                          ? "border-amber-100 bg-amber-50 text-amber-900"
+                          : "border-brand-100 bg-brand-50 text-brand-900")
+                    }
+                  >
+                    {r.tone === "danger" ? (
+                      <ShieldAlert className="mt-0.5 h-4 w-4 text-rose-600" />
+                    ) : r.tone === "warning" ? (
+                      <AlertOctagon className="mt-0.5 h-4 w-4 text-amber-600" />
+                    ) : (
+                      <ShieldCheck className="mt-0.5 h-4 w-4 text-brand-600" />
+                    )}
+                    <span>{r.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardBody>
         </Card>
 

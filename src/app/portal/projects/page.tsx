@@ -1,10 +1,12 @@
+import { redirect } from "next/navigation";
 import { CalendarRange, Hammer, Truck } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProjectStatusBadge } from "@/components/ui/StatusBadges";
 import { Badge } from "@/components/ui/Badge";
-import { getSiteName, projects } from "@/lib/data";
+import { getSiteName, projects, sites } from "@/lib/data";
 import "@/lib/server-data";
+import { allowedSiteIds, getCurrentUser } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import type { ProjectStatus } from "@/lib/types";
 import { RequestProjectButton } from "./RequestProjectButton";
@@ -19,7 +21,12 @@ const STATUS_PIPELINE: ProjectStatus[] = [
   "Completed",
 ];
 
-export default function ProjectsPage() {
+export default async function ProjectsPage() {
+  const me = await getCurrentUser();
+  if (!me) redirect("/login?next=/portal/projects");
+  const allowedIds = new Set(allowedSiteIds(me, sites.map((s) => s.id)));
+  const visibleProjects = projects.filter((p) => allowedIds.has(p.siteId));
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -45,14 +52,14 @@ export default function ProjectsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {projects.length === 0 ? (
+              {visibleProjects.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-5 py-8 text-center text-sm text-slate-500">
                     No active projects. Click "Request a New Project" to start one.
                   </td>
                 </tr>
               ) : (
-                projects.map((p) => (
+                visibleProjects.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-900">
                       {p.name}

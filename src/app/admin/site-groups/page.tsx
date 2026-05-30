@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import { listSiteGroups } from "@/lib/site-groups";
 import { SiteGroupsClient } from "./SiteGroupsClient";
 
 export default async function SiteGroupsPage() {
   const me = await getCurrentUser();
-  if (!me?.isAdmin) redirect("/login?next=/admin/site-groups");
+  if (!me || !isInternal(me)) redirect("/login?next=/admin/site-groups");
   const groups = listSiteGroups();
   const siteOptions = sites.map((s) => ({
     id: s.id,

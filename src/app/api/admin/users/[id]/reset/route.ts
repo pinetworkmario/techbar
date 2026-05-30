@@ -4,6 +4,7 @@ import {
   getCurrentUser,
   inviteExpiry,
 } from "@/lib/auth";
+import { sendMail } from "@/lib/mail-graph";
 import {
   listInvites,
   listUsers,
@@ -30,5 +31,27 @@ export async function POST(
   const invites = (await listInvites()).filter((i) => i.userId !== id);
   invites.push({ token, userId: id, expiresAt: inviteExpiry() });
   await saveInvites(invites);
-  return NextResponse.json({ ok: true, inviteToken: token });
+
+  const baseUrl =
+    process.env.PORTAL_PUBLIC_URL || "https://techbar.pinetwork.com.au";
+  const resetLink = `${baseUrl}/set-password?token=${token}`;
+  let mailSent = false;
+  try {
+    const result = await sendMail({
+      to: u.email,
+      subject: "PI Network — password reset link",
+      body:
+        `Hi ${u.name},\n\n` +
+        `${me.name} has issued a password reset for your PI Network portal account.\n\n` +
+        `Set a new password using the link below:\n` +
+        `${resetLink}\n\n` +
+        `This link expires in 7 days.\n\n` +
+        `— PI Network`,
+    });
+    mailSent = !!result.ok;
+  } catch {
+    mailSent = false;
+  }
+
+  return NextResponse.json({ ok: true, inviteToken: token, mailSent });
 }

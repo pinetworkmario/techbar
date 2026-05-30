@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 
 const ENDPOINT = "https://places.googleapis.com/v1/places:autocomplete";
 const TIMEOUT_MS = 8000;
@@ -17,7 +17,7 @@ interface PlaceSuggestion {
 
 export async function POST(req: Request) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const key = process.env.GOOGLE_MAPS_API_KEY;

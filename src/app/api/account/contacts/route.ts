@@ -4,6 +4,7 @@ import {
   generateInviteToken,
   getCurrentUser,
   inviteExpiry,
+  isCustomerUser,
 } from "@/lib/auth";
 import {
   listInvites,
@@ -56,7 +57,7 @@ function isSubsetOfParent(
 export async function GET() {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (me.parentUserId) {
+  if (isCustomerUser(me)) {
     return NextResponse.json(
       { error: "Sub-contacts cannot manage further accounts" },
       { status: 403 },
@@ -70,7 +71,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (me.parentUserId) {
+  if (isCustomerUser(me)) {
     return NextResponse.json(
       { error: "Sub-contacts cannot manage further accounts" },
       { status: 403 },

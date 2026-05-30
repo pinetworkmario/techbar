@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import {
   Activity,
   ArrowLeft,
@@ -29,7 +29,7 @@ export default async function AdminLayout({
 }) {
   const me = await getCurrentUser();
   if (!me) redirect("/login?next=/admin");
-  if (!me.isAdmin) redirect("/portal/sites");
+  if (!isInternal(me)) redirect("/portal/sites");
 
   const handoffPending = pendingCount();
 
@@ -51,17 +51,25 @@ export default async function AdminLayout({
         </div>
         <nav className="flex-1 space-y-1 p-3 text-sm">
           <AdminSidebarLink href="/admin" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" exact />
-          <AdminSidebarLink href="/admin/users" icon={<Users className="h-4 w-4" />} label="Users" />
+          {me.isAdmin ? (
+            <AdminSidebarLink href="/admin/users" icon={<Users className="h-4 w-4" />} label="Users" />
+          ) : null}
           <AdminSidebarLink href="/admin/sites" icon={<Building2 className="h-4 w-4" />} label="Sites & Devices" />
           <AdminSidebarLink href="/admin/site-groups" icon={<Boxes className="h-4 w-4" />} label="Site Groups" />
           <AdminSidebarLink href="/admin/tickets" icon={<LifeBuoy className="h-4 w-4" />} label="Tickets" />
           <AdminSidebarLink href="/admin/projects" icon={<Hammer className="h-4 w-4" />} label="Projects" />
           <AdminSidebarLink href="/admin/maintenance" icon={<Wrench className="h-4 w-4" />} label="Maintenance" />
-          <AdminSidebarLink href="/admin/help-articles" icon={<BookOpen className="h-4 w-4" />} label="Help Articles" />
-          <AdminSidebarLink href="/admin/referral" icon={<Gift className="h-4 w-4" />} label="Referrals" />
-          <AdminSidebarLink href="/admin/activity" icon={<Activity className="h-4 w-4" />} label="Activity Log" />
+          {me.isAdmin ? (
+            <>
+              <AdminSidebarLink href="/admin/help-articles" icon={<BookOpen className="h-4 w-4" />} label="Help Articles" />
+              <AdminSidebarLink href="/admin/referral" icon={<Gift className="h-4 w-4" />} label="Referrals" />
+              <AdminSidebarLink href="/admin/activity" icon={<Activity className="h-4 w-4" />} label="Activity Log" />
+            </>
+          ) : null}
           <AdminSidebarLink href="/admin/orders" icon={<ShoppingBag className="h-4 w-4" />} label="Orders" />
-          <AdminSidebarLink href="/admin/catalog" icon={<Tags className="h-4 w-4" />} label="Store Catalog" />
+          {me.isAdmin ? (
+            <AdminSidebarLink href="/admin/catalog" icon={<Tags className="h-4 w-4" />} label="Store Catalog" />
+          ) : null}
           <AdminSidebarLink
             href="/admin/chat-handoffs"
             icon={<MessageCircle className="h-4 w-4" />}

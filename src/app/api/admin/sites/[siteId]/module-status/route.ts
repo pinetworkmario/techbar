@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import { pingHost } from "@/lib/ping";
 
@@ -10,7 +10,7 @@ export async function GET(
   ctx: { params: Promise<{ siteId: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { siteId } = await ctx.params;

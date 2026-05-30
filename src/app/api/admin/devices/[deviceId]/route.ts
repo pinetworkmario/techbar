@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { getDeviceOverrides, saveDeviceOverrides } from "@/lib/store";
 
 export async function PATCH(
@@ -7,7 +7,7 @@ export async function PATCH(
   ctx: { params: Promise<{ deviceId: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { deviceId } = await ctx.params;
   const body = await req.json();
@@ -33,7 +33,7 @@ export async function DELETE(
   ctx: { params: Promise<{ deviceId: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { deviceId } = await ctx.params;
   const overrides = await getDeviceOverrides();

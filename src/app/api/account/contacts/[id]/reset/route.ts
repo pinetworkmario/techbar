@@ -3,6 +3,7 @@ import {
   generateInviteToken,
   getCurrentUser,
   inviteExpiry,
+  isCustomerUser,
 } from "@/lib/auth";
 import {
   listInvites,
@@ -17,7 +18,7 @@ export async function POST(
 ) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (me.parentUserId)
+  if (isCustomerUser(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const users = await listUsers();

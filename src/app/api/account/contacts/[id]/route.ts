@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isCustomerUser } from "@/lib/auth";
 import {
   listInvites,
   listUsers,
@@ -37,7 +37,7 @@ export async function PATCH(
 ) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (me.parentUserId)
+  if (isCustomerUser(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const body = await req.json();
@@ -71,7 +71,7 @@ export async function DELETE(
 ) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (me.parentUserId)
+  if (isCustomerUser(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const { users, target } = await loadOwned(me.id, id);

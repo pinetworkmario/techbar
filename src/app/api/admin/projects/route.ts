@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { projects, sites } from "@/lib/data";
 import { persistProjects } from "@/lib/server-data";
 import { recordActivity } from "@/lib/activity";
@@ -25,14 +25,14 @@ const VALID_STATUSES: ProjectStatus[] = [
 
 export async function GET() {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   return NextResponse.json({ projects: projects.slice() });
 }
 
 export async function POST(req: Request) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const b = (await req.json().catch(() => ({}))) as Partial<Project>;
   const name = (b.name ?? "").trim();

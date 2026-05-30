@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { deviceCategory, devices, sites } from "@/lib/data";
 import { persistDevices } from "@/lib/server-data";
 import type {
@@ -86,7 +86,7 @@ export async function POST(
   ctx: { params: Promise<{ siteId: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { siteId } = await ctx.params;

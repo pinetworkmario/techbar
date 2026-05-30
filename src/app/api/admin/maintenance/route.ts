@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { devices, maintenanceItems, sites } from "@/lib/data";
 import { persistMaintenance } from "@/lib/server-data";
 import type {
@@ -24,7 +24,7 @@ const VALID_STATUS: MaintenanceStatus[] = [
 
 export async function GET() {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const sorted = maintenanceItems
     .slice()
@@ -34,7 +34,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const b = (await req.json().catch(() => ({}))) as Partial<MaintenanceItem>;
   const siteId = (b.siteId ?? "").trim();

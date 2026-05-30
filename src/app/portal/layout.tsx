@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isCustomerUser } from "@/lib/auth";
 import { PortalSidebar } from "@/components/portal/PortalSidebar";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { MobileNav } from "@/components/portal/MobileNav";
@@ -15,7 +15,7 @@ export default async function PortalLayout({
     name: me.name,
     email: me.email,
     isAdmin: me.isAdmin,
-    isContactManager: !me.parentUserId,
+    isContactManager: !isCustomerUser(me),
   };
   return (
     <div className="flex min-h-screen bg-slate-50">

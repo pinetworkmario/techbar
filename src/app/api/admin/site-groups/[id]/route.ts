@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import { deleteSiteGroup, updateSiteGroup } from "@/lib/site-groups";
 
@@ -8,7 +8,7 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as {
@@ -35,7 +35,7 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await ctx.params;
   const ok = await deleteSiteGroup(id);

@@ -4,6 +4,7 @@ import {
   allowedSiteIds,
   canAccessSite,
   getCurrentUser,
+  isCustomerUser,
 } from "@/lib/auth";
 import { projects, sites, tickets } from "@/lib/data";
 import {
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
   let siteName = "";
   let createdSite = false;
   if (newSite && newSite.name && newSite.state && newSite.address) {
-    if (me.parentUserId)
+    if (isCustomerUser(me))
       return NextResponse.json(
         { error: "Sub-contacts can't create new sites." },
         { status: 403 },

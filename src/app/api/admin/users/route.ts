@@ -5,6 +5,7 @@ import {
   getCurrentUser,
   inviteExpiry,
 } from "@/lib/auth";
+import { sendMail } from "@/lib/mail-graph";
 import {
   listInvites,
   listUsers,
@@ -123,6 +124,27 @@ export async function POST(req: Request) {
   ) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 });
   }
+  // For customer_user role, parentUserId is required and must point to an
+  // existing customer_admin. Otherwise gates that key off parentUserId would
+  // mis-classify the new account.
+  let parentUserId: string | null = null;
+  if (effective === "customer_user") {
+    const pid = typeof body.parentUserId === "string" ? body.parentUserId.trim() : "";
+    if (!pid) {
+      return NextResponse.json(
+        { error: "customer_user requires a valid parent customer_admin" },
+        { status: 400 },
+      );
+    }
+    const parent = users.find((u) => u.id === pid);
+    if (!parent || deriveEffective(parent) !== "customer_admin") {
+      return NextResponse.json(
+        { error: "customer_user requires a valid parent customer_admin" },
+        { status: 400 },
+      );
+    }
+    parentUserId = pid;
+  }
   const id = "u-" + randomBytes(8).toString("hex");
   const now = new Date().toISOString();
   const user: User = {
@@ -137,7 +159,7 @@ export async function POST(req: Request) {
     passwordSalt: null,
     disabled: false,
     permissions,
-    parentUserId: null,
+    parentUserId,
     createdAt: now,
     updatedAt: now,
   };
@@ -147,5 +169,32 @@ export async function POST(req: Request) {
   const invites = await listInvites();
   invites.push({ token, userId: id, expiresAt: inviteExpiry() });
   await saveInvites(invites);
-  return NextResponse.json({ ok: true, user: publicShape(user), inviteToken: token });
+
+  const baseUrl =
+    process.env.PORTAL_PUBLIC_URL || "https://techbar.pinetwork.com.au";
+  const activationLink = `${baseUrl}/set-password?token=${token}`;
+  let mailSent = false;
+  try {
+    const result = await sendMail({
+      to: email,
+      subject: "Welcome to PI Network — set your password",
+      body:
+        `Hi ${name},\n\n` +
+        `${me.name} has invited you to the PI Network customer portal.\n\n` +
+        `To activate your account, set your password using the link below:\n` +
+        `${activationLink}\n\n` +
+        `This link expires in 7 days.\n\n` +
+        `— PI Network`,
+    });
+    mailSent = !!result.ok;
+  } catch {
+    mailSent = false;
+  }
+
+  return NextResponse.json({
+    ok: true,
+    user: publicShape(user),
+    inviteToken: token,
+    mailSent,
+  });
 }

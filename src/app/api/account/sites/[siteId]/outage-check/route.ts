@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { canAccessSite, getCurrentUser } from "@/lib/auth";
+import { canAccessModule, canAccessSite, getCurrentUser } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import { persistSites } from "@/lib/server-data";
 import { syntheticOutageCheck } from "@/lib/access-network";
@@ -18,6 +18,11 @@ export async function POST(
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   if (!canAccessSite(me, site.id))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!canAccessModule(me, site.id, "network"))
+    return NextResponse.json(
+      { error: "Module not available for your account" },
+      { status: 403 },
+    );
 
   // Prefer real Carbon data when this site is linked; otherwise synthesize.
   let report = await realOutageCheckForSite(site);
@@ -47,6 +52,11 @@ export async function GET(
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   if (!canAccessSite(me, site.id))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!canAccessModule(me, site.id, "network"))
+    return NextResponse.json(
+      { error: "Module not available for your account" },
+      { status: 403 },
+    );
   return NextResponse.json({
     ok: true,
     report: site.outageReport ?? null,

@@ -4,6 +4,7 @@ import { canAccessSite, getCurrentUser } from "@/lib/auth";
 import { sites, tickets } from "@/lib/data";
 import { persistTickets } from "@/lib/server-data";
 import { recordActivity } from "@/lib/activity";
+import { sendMail } from "@/lib/mail-graph";
 import type { BusinessImpact, Ticket, TicketStatus } from "@/lib/types";
 
 const VALID_IMPACT: BusinessImpact[] = [
@@ -73,5 +74,34 @@ export async function POST(
     "ticket",
     `${ticket.number} created — ${site.name}: ${ticket.issueType}`,
   );
+
+  try {
+    const to =
+      process.env.NOTIFY_TICKETS_EMAIL || "support@pinetwork.com.au";
+    const subject = `[techbar] New ticket — ${site.name}: ${ticket.issueType}`;
+    const lines = [
+      `Ticket number: ${ticket.number}`,
+      `Site: ${site.name} (${site.state})`,
+      `Customer: ${me.name || ""} <${me.email}>`,
+      `Issue type: ${ticket.issueType}`,
+      `Business impact: ${ticket.businessImpact}`,
+      `Device or service: ${ticket.deviceOrService}`,
+    ];
+    if (ticket.description) {
+      lines.push("", "Description:", ticket.description);
+    }
+    lines.push(
+      "",
+      "Manage: https://techbar.pinetwork.com.au/admin/tickets",
+      "",
+      `Logged via techbar by ${me.name || me.email}`,
+    );
+    void sendMail({ to, subject, body: lines.join("\n") }).catch((err) =>
+      console.warn("ticket mail failed", err),
+    );
+  } catch (err) {
+    console.warn("ticket mail failed", err);
+  }
+
   return NextResponse.json({ ok: true, ticket });
 }

@@ -49,6 +49,38 @@ export async function PATCH(
         : er === "customer_user"
           ? "user"
           : undefined;
+    // parentUserId only makes sense for customer_user. Validate when
+    // transitioning into customer_user; clear it otherwise.
+    if (er === "customer_user") {
+      const pid =
+        typeof body.parentUserId === "string" ? body.parentUserId.trim() : "";
+      if (!pid) {
+        return NextResponse.json(
+          { error: "customer_user requires a valid parent customer_admin" },
+          { status: 400 },
+        );
+      }
+      const parent = users.find((x) => x.id === pid);
+      const parentEffective = parent
+        ? parent.isAdmin
+          ? "admin"
+          : parent.isTech
+            ? "tech"
+            : parent.customerRole === "user" ||
+                (!parent.customerRole && parent.parentUserId)
+              ? "customer_user"
+              : "customer_admin"
+        : null;
+      if (!parent || parentEffective !== "customer_admin") {
+        return NextResponse.json(
+          { error: "customer_user requires a valid parent customer_admin" },
+          { status: 400 },
+        );
+      }
+      u.parentUserId = pid;
+    } else {
+      u.parentUserId = null;
+    }
   } else if (typeof body.isAdmin === "boolean") {
     if (u.id === me.id && !body.isAdmin) {
       return NextResponse.json(

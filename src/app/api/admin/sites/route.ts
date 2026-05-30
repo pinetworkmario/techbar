@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import { persistSites } from "@/lib/server-data";
 import { syncSiteFromRuijie } from "@/lib/ruijie-sync";
@@ -35,7 +35,7 @@ const VALID_SERVICES: ServiceKey[] = [
 
 export async function POST(req: Request) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();

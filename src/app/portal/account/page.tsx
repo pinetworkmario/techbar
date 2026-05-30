@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ReferralPanel } from "@/components/portal/ReferralPanel";
 import { PaymentMethodsCard } from "./PaymentMethodsCard";
 import { sites } from "@/lib/data";
-import { allowedSiteIds, getCurrentUser } from "@/lib/auth";
+import { allowedSiteIds, getCurrentUser, isCustomerUser } from "@/lib/auth";
 import { SUPPORT_PACKS, getSupportPack } from "@/lib/support-packs";
 import type { SupportPack } from "@/lib/types";
 
@@ -51,7 +51,7 @@ export default async function AccountPage() {
 
       <SupportPlanCompareCard />
 
-      {me && !me.parentUserId ? (
+      {me && !isCustomerUser(me) ? (
         <Link
           href="/portal/account/contacts"
           className="group flex items-start gap-3 rounded-lg border border-brand-200 bg-brand-50/40 p-4 transition hover:border-brand-300 hover:bg-brand-50"

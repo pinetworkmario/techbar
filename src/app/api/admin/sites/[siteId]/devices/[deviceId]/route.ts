@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isInternal } from "@/lib/auth";
 import { devices, sites } from "@/lib/data";
 import { persistDevices, persistSites } from "@/lib/server-data";
 import type {
@@ -62,7 +62,7 @@ export async function PATCH(
   ctx: { params: Promise<{ siteId: string; deviceId: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { siteId, deviceId } = await ctx.params;
@@ -101,7 +101,7 @@ export async function DELETE(
   ctx: { params: Promise<{ siteId: string; deviceId: string }> },
 ) {
   const me = await getCurrentUser();
-  if (!me?.isAdmin)
+  if (!me || !isInternal(me))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { siteId, deviceId } = await ctx.params;
