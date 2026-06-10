@@ -21,6 +21,9 @@ import {
 import { LogoutButton } from "@/components/portal/LogoutButton";
 import { pendingCount } from "@/lib/chat-handoffs";
 import { AdminSidebarLink } from "./AdminSidebarLink";
+import { MobileNav } from "@/components/ui/MobileNav";
+import { LanguageToggle } from "@/components/ui/LanguageToggle";
+import { getLang } from "@/lib/i18n";
 
 export default async function AdminLayout({
   children,
@@ -32,9 +35,58 @@ export default async function AdminLayout({
   if (!isInternal(me)) redirect("/portal/sites");
 
   const handoffPending = pendingCount();
+  const lang = await getLang();
+
+  const mobileNavItems = [
+    { href: "/admin", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
+    ...(me.isAdmin
+      ? [{ href: "/admin/users", label: "Users", icon: <Users className="h-4 w-4" /> }]
+      : []),
+    { href: "/admin/sites", label: "Sites & Devices", icon: <Building2 className="h-4 w-4" /> },
+    { href: "/admin/site-groups", label: "Site Groups", icon: <Boxes className="h-4 w-4" /> },
+    { href: "/admin/tickets", label: "Tickets", icon: <LifeBuoy className="h-4 w-4" /> },
+    { href: "/admin/projects", label: "Projects", icon: <Hammer className="h-4 w-4" /> },
+    { href: "/admin/maintenance", label: "Maintenance", icon: <Wrench className="h-4 w-4" /> },
+    ...(me.isAdmin
+      ? [
+          { href: "/admin/help-articles", label: "Help Articles", icon: <BookOpen className="h-4 w-4" /> },
+          { href: "/admin/referral", label: "Referrals", icon: <Gift className="h-4 w-4" /> },
+          { href: "/admin/activity", label: "Activity Log", icon: <Activity className="h-4 w-4" /> },
+        ]
+      : []),
+    { href: "/admin/orders", label: "Orders", icon: <ShoppingBag className="h-4 w-4" /> },
+    ...(me.isAdmin
+      ? [{ href: "/admin/catalog", label: "Store Catalog", icon: <Tags className="h-4 w-4" /> }]
+      : []),
+    {
+      href: "/admin/chat-handoffs",
+      label: "Chat Handoffs",
+      icon: <MessageCircle className="h-4 w-4" />,
+    },
+    { href: "/portal/sites", label: "Back to portal", icon: <ArrowLeft className="h-4 w-4" /> },
+  ];
 
   return (
     <div className="flex min-h-screen bg-slate-50">
+      <MobileNav
+        items={mobileNavItems}
+        tone="light"
+        brandSlot={
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-500 text-white shadow-soft">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold leading-tight text-slate-900">
+                PI Network
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                Admin Console
+              </div>
+            </div>
+          </div>
+        }
+      />
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
         <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-5">
           <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-500 text-white shadow-soft">
@@ -83,7 +135,13 @@ export default async function AdminLayout({
             <ArrowLeft className="h-3.5 w-3.5" /> Back to portal
           </Link>
         </nav>
-        <div className="border-t border-slate-200 p-4">
+        <div className="space-y-3 border-t border-slate-200 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              Language
+            </span>
+            <LanguageToggle current={lang} />
+          </div>
           <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
             <div className="truncate font-medium text-slate-900">{me.name}</div>
             <div className="truncate text-slate-500">{me.email}</div>

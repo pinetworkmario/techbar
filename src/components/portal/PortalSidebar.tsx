@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,6 +16,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/portal/LogoutButton";
+import { LanguageToggle } from "@/components/ui/LanguageToggle";
+import type { Lang } from "@/lib/i18n";
+
+function readLangFromCookie(): Lang {
+  if (typeof document === "undefined") return "en";
+  const match = document.cookie.match(/(?:^|;\s*)pi_lang=([^;]+)/);
+  const raw = match ? decodeURIComponent(match[1]) : "";
+  return raw === "zh" ? "zh" : "en";
+}
 
 const NAV = [
   { href: "/portal/sites", label: "My Sites", icon: Building2 },
@@ -37,8 +47,19 @@ interface SidebarUser {
   isContactManager: boolean;
 }
 
-export function PortalSidebar({ user }: { user?: SidebarUser }) {
+export function PortalSidebar({
+  user,
+  lang: initialLang,
+}: {
+  user?: SidebarUser;
+  lang?: Lang;
+}) {
   const pathname = usePathname();
+  const [lang, setLang] = useState<Lang>(initialLang ?? "en");
+  useEffect(() => {
+    if (initialLang) return;
+    setLang(readLangFromCookie());
+  }, [initialLang]);
 
   return (
     <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col">
@@ -101,7 +122,13 @@ export function PortalSidebar({ user }: { user?: SidebarUser }) {
           </Link>
         ) : null}
       </nav>
-      <div className="border-t border-slate-200 p-4">
+      <div className="border-t border-slate-200 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+            Language
+          </span>
+          <LanguageToggle current={lang} />
+        </div>
         {user ? (
           <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
             <div className="truncate font-medium text-slate-900">

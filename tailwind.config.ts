@@ -2,6 +2,7 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
+  darkMode: ["class", "[data-shell=\"tech\"]"],
   theme: {
     extend: {
       colors: {
@@ -37,6 +38,9 @@ const config: Config = {
       boxShadow: {
         card: "0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06)",
         soft: "0 4px 18px -4px rgba(15,23,42,0.08)",
+        "glow-cyan": "0 0 24px rgba(34,211,238,0.35)",
+        "glow-emerald": "0 0 24px rgba(52,211,153,0.35)",
+        "glow-rose": "0 0 24px rgba(251,113,133,0.35)",
       },
     },
   },

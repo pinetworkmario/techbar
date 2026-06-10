@@ -61,6 +61,7 @@ import type {
 import { cn, formatDate } from "@/lib/utils";
 import { getSupportPack } from "@/lib/support-packs";
 import { getAccessTypeMeta } from "@/lib/access-network";
+import { t, type Lang } from "@/lib/i18n";
 import {
   getExternalTraffic,
   getInternalAttendance,
@@ -142,20 +143,24 @@ function computePings(
   return { upstreamMs, googleMs };
 }
 
-const ALL_TABS: {
+interface TabSpec {
   key: ServiceCategory;
   label: string;
   icon: typeof NetworkIcon;
-}[] = [
-  { key: "network", label: "Network", icon: NetworkIcon },
-  { key: "voice", label: "Voice", icon: PhoneCall },
-  { key: "cctv", label: "CCTV & Alarm", icon: ShieldCheck },
-  { key: "pos", label: "POS", icon: CreditCard },
-  { key: "endpoint", label: "Endpoint", icon: Monitor },
-  { key: "traffic_analysis", label: "Traffic Analysis", icon: Activity },
-  { key: "it_support", label: "IT Support", icon: LifeBuoy },
-  { key: "projects", label: "Projects & Installation", icon: Hammer },
-];
+}
+
+function buildTabs(lang: Lang): TabSpec[] {
+  return [
+    { key: "network", label: t(lang, "modules.network"), icon: NetworkIcon },
+    { key: "voice", label: t(lang, "modules.voice"), icon: PhoneCall },
+    { key: "cctv", label: t(lang, "modules.cctv"), icon: ShieldCheck },
+    { key: "pos", label: t(lang, "modules.pos"), icon: CreditCard },
+    { key: "endpoint", label: t(lang, "modules.endpoint"), icon: Monitor },
+    { key: "traffic_analysis", label: "Traffic Analysis", icon: Activity },
+    { key: "it_support", label: t(lang, "modules.it_support"), icon: LifeBuoy },
+    { key: "projects", label: "Projects & Installation", icon: Hammer },
+  ];
+}
 
 export function SiteDetailClient({
   site,
@@ -163,15 +168,20 @@ export function SiteDetailClient({
   overrides,
   allowedModules,
   isAdmin,
+  lang,
 }: {
   site: Site;
   siteDevices: Device[];
   overrides: Overrides;
   allowedModules: ServiceCategory[];
   isAdmin: boolean;
+  lang: Lang;
 }) {
   const router = useRouter();
-  const tabs = ALL_TABS.filter((t) => allowedModules.includes(t.key));
+  const tabs = useMemo(
+    () => buildTabs(lang).filter((tab) => allowedModules.includes(tab.key)),
+    [lang, allowedModules],
+  );
   const [liveDevices, setLiveDevices] = useState<Device[]>(siteDevices);
   // When server re-renders (e.g. after Adopt), refresh liveDevices from prop
   useEffect(() => {
@@ -240,8 +250,22 @@ export function SiteDetailClient({
   );
   const extras: SiteExtras = siteExtras[site.id] ?? {};
 
+  const issueCount = liveDevices.filter(
+    (d) => d.status === "Offline" || d.status === "Warning",
+  ).length;
+  const isHealthy = site.health === "Healthy" && issueCount === 0;
+  const isCritical = site.health === "Critical" || issueCount >= 3;
+
   return (
     <div className="space-y-6">
+      <SiteHealthHero
+        site={site}
+        lang={lang}
+        isHealthy={isHealthy}
+        isCritical={isCritical}
+        issueCount={issueCount}
+      />
+
       <Link
         href="/portal/sites"
         className="inline-flex items-center gap-1 text-sm text-brand-600 hover:underline"
@@ -291,6 +315,8 @@ export function SiteDetailClient({
 
       <SupportPackBanner site={site} />
 
+      <FriendlyTimeline siteId={site.id} lang={lang} />
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SiteFact label="State" value={site.state} icon={MapPin} />
         <SiteFact
@@ -319,14 +345,14 @@ export function SiteDetailClient({
         <>
           <div className="border-b border-slate-200">
             <nav className="-mb-px flex flex-wrap gap-1 overflow-x-auto">
-              {tabs.map((t) => {
-                const active = tab === t.key;
-                const Icon = t.icon;
+              {tabs.map((tabSpec) => {
+                const active = tab === tabSpec.key;
+                const Icon = tabSpec.icon;
                 return (
                   <button
-                    key={t.key}
+                    key={tabSpec.key}
                     type="button"
-                    onClick={() => setTab(t.key)}
+                    onClick={() => setTab(tabSpec.key)}
                     className={cn(
                       "inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition",
                       active
@@ -335,7 +361,7 @@ export function SiteDetailClient({
                     )}
                   >
                     <Icon className="h-4 w-4" />
-                    {t.label}
+                    {tabSpec.label}
                   </button>
                 );
               })}
@@ -494,20 +520,39 @@ function DeviceCard({
   rightSlot?: React.ReactNode;
 }) {
   const asset = resolveAsset(device, overrides);
-  const photo = resolvePhoto(device, overrides);
+  const overridePhoto = overrides[device.id]?.photoUrl;
+  const hasRealPhoto = Boolean(overridePhoto || device.photoUrl);
+  const photo = hasRealPhoto ? resolvePhoto(device, overrides) : null;
+  const cat = deviceCategory(device.type);
   const label = `${device.name} (${asset})`;
   const upstream = computeUpstream(device, siteDevices);
   const pings = computePings(device, upstream);
   return (
     <Card className="overflow-hidden">
       <div className="grid gap-0 sm:grid-cols-[180px_1fr]">
-        <div className="relative aspect-[4/3] bg-slate-100 sm:aspect-auto">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photo}
-            alt={`${device.name} location`}
-            className="h-full w-full object-cover"
-          />
+        <div
+          className={cn(
+            "relative aspect-[4/3] overflow-hidden sm:aspect-auto",
+            hasRealPhoto
+              ? "bg-slate-100"
+              : "bg-gradient-to-br " + categoryTint(cat),
+          )}
+        >
+          {hasRealPhoto && photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photo}
+              alt={`${device.name} location`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              className="flex h-full w-full items-center justify-center text-5xl"
+              aria-hidden="true"
+            >
+              {categoryEmoji(cat)}
+            </div>
+          )}
           <div className="absolute left-2 top-2 rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 shadow-sm">
             {asset}
           </div>
@@ -2162,6 +2207,173 @@ function ExternalTrafficCard({ traffic }: { traffic: FootTrafficSummary }) {
       </CardBody>
     </Card>
   );
+}
+
+// ============================================================
+// Friendly hero + timeline (customer-facing health dashboard)
+// ============================================================
+
+function SiteHealthHero({
+  site,
+  lang,
+  isHealthy,
+  isCritical,
+  issueCount,
+}: {
+  site: Site;
+  lang: Lang;
+  isHealthy: boolean;
+  isCritical: boolean;
+  issueCount: number;
+}) {
+  if (isHealthy) {
+    return (
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-teal-500 via-brand-500 to-emerald-500 p-7 text-white shadow-xl ring-1 ring-white/30">
+        <div className="flex items-start gap-4">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/20 text-3xl ring-1 ring-white/30 backdrop-blur">
+            <CheckCircle2 className="h-8 w-8" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-2xl font-bold leading-tight sm:text-3xl">
+              {t(lang, "status.allRunning")}
+            </div>
+            <div className="mt-1 text-sm text-white/90 sm:text-base">
+              Everything we monitor at{" "}
+              <span className="font-semibold">{site.name}</span> is running.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const tone = isCritical
+    ? "from-rose-500 via-rose-500 to-amber-500"
+    : "from-amber-400 via-amber-500 to-rose-400";
+  const summary =
+    issueCount === 0
+      ? "We're keeping an eye on a few things."
+      : issueCount === 1
+        ? "1 thing needs a closer look right now."
+        : `${issueCount} things need a closer look right now.`;
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-3xl bg-gradient-to-br p-7 text-white shadow-xl ring-1 ring-white/30",
+        tone,
+      )}
+    >
+      <div className="flex items-start gap-4">
+        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white/20 text-3xl ring-1 ring-white/30 backdrop-blur">
+          <AlertTriangle className="h-8 w-8" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-2xl font-bold leading-tight sm:text-3xl">
+            {t(lang, "status.issuesDetected")}
+          </div>
+          <div className="mt-1 text-sm text-white/90 sm:text-base">
+            {summary} {t(lang, "status.callSupport")}.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface TimelineEntry {
+  id: string;
+  date: string;
+  titleKey: string;
+  detail: string;
+}
+
+function buildTimeline(siteId: string): TimelineEntry[] {
+  const tickets = getTicketsForSite(siteId);
+  const recent = tickets
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    .slice(0, 4);
+  return recent.map((tk, i) => {
+    const titleKey =
+      i === 0
+        ? "timeline.engineerVisit"
+        : i === 1
+          ? "timeline.deviceReplaced"
+          : "timeline.routineCheck";
+    return {
+      id: tk.id,
+      date: tk.createdAt,
+      titleKey,
+      detail: tk.deviceOrService,
+    };
+  });
+}
+
+function FriendlyTimeline({ siteId, lang }: { siteId: string; lang: Lang }) {
+  const entries = useMemo(() => buildTimeline(siteId), [siteId]);
+  if (entries.length === 0) return null;
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-2">
+        <Activity className="h-5 w-5 text-brand-600" />
+        <h3 className="text-base font-semibold text-slate-900">
+          Recent activity
+        </h3>
+      </div>
+      <ol className="mt-4 space-y-3">
+        {entries.map((e) => (
+          <li key={e.id} className="flex items-start gap-3">
+            <div className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500 ring-4 ring-brand-100" />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-slate-900">
+                {t(lang, e.titleKey)}
+              </div>
+              <div className="truncate text-xs text-slate-500">{e.detail}</div>
+            </div>
+            <div className="shrink-0 text-xs text-slate-400">
+              {formatDate(e.date)}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function categoryEmoji(cat: ServiceCategory): string {
+  switch (cat) {
+    case "network":
+      return "📡";
+    case "voice":
+      return "📞";
+    case "cctv":
+      return "📷";
+    case "pos":
+      return "💳";
+    case "endpoint":
+      return "💻";
+    default:
+      return "🛠️";
+  }
+}
+
+function categoryTint(cat: ServiceCategory): string {
+  switch (cat) {
+    case "network":
+      return "from-sky-100 to-cyan-100";
+    case "voice":
+      return "from-violet-100 to-fuchsia-100";
+    case "cctv":
+      return "from-amber-100 to-orange-100";
+    case "pos":
+      return "from-emerald-100 to-teal-100";
+    case "endpoint":
+      return "from-slate-100 to-slate-200";
+    default:
+      return "from-slate-100 to-slate-200";
+  }
 }
 
 // ============================================================

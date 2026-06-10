@@ -53,6 +53,16 @@ export function SiteChat({
     setRecognitionAvailable(!!Recog);
   }, []);
 
+  // Allow other components (e.g. SupportFloatingButton) to open the chat panel
+  // by dispatching a window-level custom event.
+  useEffect(() => {
+    function handler() {
+      setOpen(true);
+    }
+    window.addEventListener("pi:open-site-chat", handler);
+    return () => window.removeEventListener("pi:open-site-chat", handler);
+  }, []);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,

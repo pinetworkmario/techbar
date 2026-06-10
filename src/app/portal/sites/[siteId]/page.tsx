@@ -7,6 +7,8 @@ import {
 import { getDevicesForSite, getSiteById } from "@/lib/data";
 import { getDeviceOverrides } from "@/lib/store";
 import { SiteChat } from "@/components/portal/SiteChat";
+import { SupportFloatingButton } from "@/components/portal/SupportFloatingButton";
+import { getLang } from "@/lib/i18n";
 import { SiteDetailClient } from "./SiteDetailClient";
 
 export default async function SiteDetailPage({
@@ -23,6 +25,7 @@ export default async function SiteDetailPage({
   const overrides = await getDeviceOverrides();
   const allowed = allowedModulesForSite(me, site.id);
   const siteDevices = getDevicesForSite(site.id);
+  const lang = await getLang();
   return (
     <>
       <SiteDetailClient
@@ -31,8 +34,10 @@ export default async function SiteDetailPage({
         overrides={overrides}
         allowedModules={allowed}
         isAdmin={me.isAdmin}
+        lang={lang}
       />
       <SiteChat siteId={site.id} siteName={site.name} />
+      <SupportFloatingButton lang={lang} />
     </>
   );
 }

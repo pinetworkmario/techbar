@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser, isCustomerUser } from "@/lib/auth";
+import { getLang } from "@/lib/i18n";
 import { PortalSidebar } from "@/components/portal/PortalSidebar";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { MobileNav } from "@/components/portal/MobileNav";
@@ -11,6 +12,7 @@ export default async function PortalLayout({
 }) {
   const me = await getCurrentUser();
   if (!me) redirect("/login?next=/portal/sites");
+  const lang = await getLang();
   const userInfo = {
     name: me.name,
     email: me.email,
@@ -19,7 +21,7 @@ export default async function PortalLayout({
   };
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <PortalSidebar user={userInfo} />
+      <PortalSidebar user={userInfo} lang={lang} />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:hidden">
           <MobileNav user={userInfo} />

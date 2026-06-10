@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Search } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { sites } from "@/lib/data";
 import type { Site, SiteHealth } from "@/lib/types";
@@ -19,6 +18,7 @@ interface TechSiteRow {
   cctvCameraVendor?: string;
   ateraCustomer?: string;
   supportPack?: string;
+  lanSubnet?: string;
 }
 
 function toRow(s: Site): TechSiteRow {
@@ -35,6 +35,7 @@ function toRow(s: Site): TechSiteRow {
     cctvCameraVendor: s.cctvModule?.cameraVendor,
     ateraCustomer: s.endpointModule?.ateraCustomerName,
     supportPack: s.supportPack,
+    lanSubnet: s.lanSubnet,
   };
 }
 
@@ -45,7 +46,6 @@ export default async function TechSitesPage() {
 
   const rows: TechSiteRow[] = sites.map(toRow);
 
-  // Stats
   const healthCounts = rows.reduce(
     (acc, r) => {
       acc[r.health] = (acc[r.health] ?? 0) + 1;
@@ -56,23 +56,23 @@ export default async function TechSitesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
-            <Building2 className="h-6 w-6 text-sky-500" /> All sites
+          <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-100">
+            <Building2 className="h-6 w-6 text-cyan-400" /> All sites
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-400">
             Pick a site to see live status, vendor portals, and run diagnostics.
           </p>
         </div>
-        <div className="hidden gap-2 text-xs sm:flex">
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-emerald-500/20 px-2.5 py-1 font-mono font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
             {healthCounts.Healthy} healthy
           </span>
-          <span className="rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700">
+          <span className="rounded-full bg-amber-500/20 px-2.5 py-1 font-mono font-semibold text-amber-300 ring-1 ring-amber-400/30">
             {healthCounts.Warning} warning
           </span>
-          <span className="rounded-full bg-rose-50 px-2.5 py-1 font-medium text-rose-700">
+          <span className="rounded-full bg-rose-500/20 px-2.5 py-1 font-mono font-semibold text-rose-300 ring-1 ring-rose-400/30">
             {healthCounts.Critical} critical
           </span>
         </div>
